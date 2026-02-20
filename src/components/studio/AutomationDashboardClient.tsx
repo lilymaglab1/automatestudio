@@ -1,93 +1,145 @@
-
 'use client';
 
-import React from 'react';
-import { Settings, PlayCircle, Plus, Sparkles, FolderOpen, Video as VideoIcon, Tv, LayoutTemplate, SquarePlay } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings, PlayCircle, Plus, Sparkles, FolderOpen, Video as VideoIcon, Tv, LayoutTemplate, SquarePlay, Wand2, Trash2, Clock, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+// import { formatDistanceToNow } from 'date-fns'; // Removed
+// import { ko } from 'date-fns/locale'; // Removed
+
+function timeAgo(dateString: string) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+
+    if (minutes < 1) return '방금 전';
+    if (minutes < 60) return `${minutes}분 전`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}시간 전`;
+    const days = Math.floor(hours / 24);
+    return `${days}일 전`;
+}
+
+interface Project {
+    _id: string;
+    title: string;
+    status: 'draft' | 'completed' | 'rendering';
+    step: number;
+    updatedAt: string;
+    thumbnail?: string;
+    settings?: any;
+    script?: string;
+}
 
 export default function AutomationDashboardClient() {
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProjects = async () => {
+            try {
+                const res = await fetch('/api/projects?userId=default_user');
+                if (res.ok) {
+                    const data = await res.json();
+                    setProjects(data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch projects:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProjects();
+    }, []);
+
     return (
-        <div className="max-w-[1280px] mx-auto py-12 px-6">
-            {/* Header Area */}
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-                        <Tv className="w-8 h-8 text-indigo-600" />
-                        내 프로젝트
-                    </h1>
-                    <p className="text-slate-500 mt-1 pl-10">
-                        지금까지 생성한 자동화 프로젝트들을 관리하세요.
-                    </p>
-                </div>
+        <div className="flex-1 bg-[#09090b] text-white p-12 overflow-y-auto">
+            <div className="max-w-6xl mx-auto">
+                {/* Header Area */}
+                <div className="flex items-center justify-between mb-12">
+                    <div>
+                        <h1 className="text-4xl font-black tracking-tight mb-2">내 프로젝트</h1>
+                        <p className="text-gray-500 font-medium">영상 자동화 프로젝트를 관리하세요.</p>
+                    </div>
 
-                <div className="flex gap-3">
-                    <button className="flex items-center gap-2 px-5 py-2.5 text-slate-600 hover:text-slate-900 font-bold border border-slate-200 rounded-full hover:border-slate-400 bg-white shadow-sm transition-all text-sm">
-                        <Settings className="w-4 h-4" />
-                        설정
-                    </button>
-
-                    <Link href="/automation/autopilot" className="flex items-center gap-2 px-6 py-2.5 text-indigo-600 font-bold bg-indigo-50 hover:bg-indigo-100 rounded-full transition-all text-sm group border border-indigo-100">
-                        <Sparkles className="w-4 h-4 fill-indigo-200 text-indigo-500 group-hover:fill-indigo-300" />
-                        오토파일럿
-                    </Link>
-
-                    <Link href="/automation/new" className="flex items-center gap-2 px-6 py-2.5 text-white font-bold bg-black hover:bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-all text-sm transform hover:-translate-y-0.5">
-                        <Plus className="w-4 h-4" />
-                        새 프로젝트
-                    </Link>
-                </div>
-            </div>
-
-            {/* Empty State / Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {/* Project Card Example 1 */}
-                <div className="group bg-white rounded-xl overflow-hidden border border-slate-200 hover:border-indigo-400 transition-all shadow-sm hover:shadow-lg hover:shadow-indigo-50 cursor-pointer p-0 relative">
-                    <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="bg-white/90 p-1.5 rounded-full hover:bg-white text-slate-500 hover:text-red-500 shadow-sm">
-                            <span className="sr-only">Delete</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+                    <div className="flex gap-4">
+                        <button className="flex items-center gap-2 px-5 py-3 text-gray-400 hover:text-white font-bold bg-[#1a1a1f] border border-[#27272a] rounded-2xl transition-all text-sm">
+                            <Settings className="w-4 h-4" />
+                            설정
                         </button>
-                    </div>
-                    <div className="bg-slate-100 h-40 flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition-transform duration-500">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-4">
-                            <span className="bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-semibold border border-white/30 flex items-center gap-1">
-                                <PlayCircle className="w-3 h-3 fill-white" />
-                                미리보기
-                            </span>
-                        </div>
-                        <VideoIcon className="w-12 h-12 text-slate-300 group-hover:text-indigo-500 transition-colors" />
-                    </div>
-                    <div className="p-5">
-                        <div className="flex items-center justify-between mb-1">
-                            <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors line-clamp-1">
-                                환율 1500원 돌파, 경제 위기인가?
-                            </h3>
-                        </div>
-                        <div className="text-xs text-slate-500 font-medium mb-3 flex items-center gap-2">
-                            <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded">완료됨</span>
-                            <span>•</span>
-                            <span>21분 전</span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-slate-400 font-medium border-t border-slate-100 pt-3 mt-1">
-                            <span className="flex items-center gap-1">
-                                <LayoutTemplate className="w-3 h-3" />
-                                16:9 롱폼
-                            </span>
-                            <span>20s</span>
-                        </div>
+
+                        <Link href="/automation/autopilot" className="flex items-center gap-2 px-6 py-3 text-[#10b981] font-bold bg-[#10b981]/10 hover:bg-[#10b981]/20 border border-[#10b981]/20 rounded-2xl transition-all text-sm group">
+                            <Sparkles className="w-4 h-4 fill-[#10b981]/20" />
+                            오토파일럿
+                        </Link>
+
+                        <Link href="/automation/new" className="flex items-center gap-2 px-6 py-3 text-white font-bold bg-[#6d28d9] hover:bg-[#7c3aed] rounded-2xl shadow-[0_0_20px_rgba(109,40,217,0.3)] hover:shadow-[0_0_30px_rgba(109,40,217,0.5)] transition-all text-sm transform hover:-translate-y-1">
+                            <Plus className="w-4 h-4" />
+                            새 프로젝트
+                        </Link>
                     </div>
                 </div>
 
-                {/* Add New Project Card */}
-                <Link href="/automation/new" className="border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center h-[300px] text-slate-400 hover:text-indigo-500 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer group">
-                    <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4 group-hover:bg-white group-hover:scale-110 transition-transform shadow-sm group-hover:shadow-md">
-                        <Plus className="w-8 h-8 text-slate-400 group-hover:text-indigo-500" />
+                {/* Empty State / Grid */}
+                {loading ? (
+                    <div className="flex items-center justify-center h-64">
+                        <div className="text-gray-500">불러오는 중...</div>
                     </div>
-                    <span className="font-bold text-lg">새 프로젝트 시작하기</span>
-                    <span className="text-xs mt-2 font-medium bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                        빠르고 쉬운 6단계 마법사
-                    </span>
-                </Link>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {/* Add New Project Card (Matching Image 1) */}
+                        <Link href="/automation/new" className="group bg-[#09090b] border border-[#1f1f23] hover:border-[#27272a] transition-all rounded-[24px] p-8 aspect-[4/3] flex flex-col items-center justify-center cursor-pointer relative overflow-hidden">
+                            <div className="w-16 h-16 rounded-full bg-[#1a1a1f] flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-[#27272a] transition-all duration-300">
+                                <Plus className="w-8 h-8 text-gray-500 group-hover:text-white transition-colors" />
+                            </div>
+
+                            <span className="text-lg font-bold text-gray-500 group-hover:text-white transition-colors">새 영상 만들기</span>
+                        </Link>
+
+                        {/* Projects List */}
+                        {projects.map((project) => (
+                            <div key={project._id} className="group bg-[#09090b] border border-[#1f1f23] hover:border-[#27272a] transition-all rounded-[24px] overflow-hidden flex flex-col relative aspect-[4/3]">
+                                <div className="p-6 flex-1 flex flex-col">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <span className="px-2 py-1 bg-[#1a1a1f] rounded-lg text-[10px] font-bold text-gray-400 border border-[#27272a]">
+                                            {project.step >= 6 ? 'Completed' : `Step ${project.step}/6`}
+                                        </span>
+                                        <button className="text-gray-600 hover:text-white transition-colors">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+
+                                    <h3 className="font-bold text-lg leading-snug text-gray-200 group-hover:text-white transition-colors line-clamp-3 mb-auto">
+                                        {project.title || '제목 없음'}
+                                    </h3>
+
+                                    <div className="mt-6 flex items-center justify-between pt-4 border-t border-[#1f1f23]">
+                                        <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
+                                            <Clock className="w-3 h-3" />
+                                            <span>
+                                                {timeAgo(project.updatedAt)}
+                                            </span>
+                                        </div>
+                                        <span className="text-xs text-gray-600 font-mono">
+                                            {project._id.slice(-6)}
+                                        </span>
+                                    </div>
+
+                                    <Link href={`/automation/${project._id}`} className="absolute bottom-6 right-6 flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-white transition-colors">
+                                        편집 <ChevronRight className="w-3 h-3" />
+                                    </Link>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {!loading && projects.length > 0 && (
+                    <div className="mt-12 text-center">
+                        <span className="text-xs font-bold text-gray-600">모든 프로젝트를 불러왔습니다</span>
+                    </div>
+                )}
             </div>
         </div>
     );
