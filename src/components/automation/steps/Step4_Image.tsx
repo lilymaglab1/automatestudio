@@ -3,23 +3,55 @@
 
 import React, { useState } from 'react';
 import { useWizard, Segment } from '@/components/automation/WizardContext';
+import { imageModels } from '@/lib/automation-constants';
 import { Image as ImageIcon, RefreshCw, Trash2, Plus, Play, Pause, Wand2, Clock, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Step4_Image() {
-    const { settings, segments, updateSegment, setStep, setSegments } = useWizard();
+    const { settings, updateSettings, segments, updateSegment, setStep, setSegments } = useWizard();
     const [generatingId, setGeneratingId] = useState<string | null>(null);
     const [autoGenerating, setAutoGenerating] = useState(false);
 
-    const handleGenerateImage = (id: string, delay = 0) => {
+    const handleGenerateImage = async (id: string, delay = 0) => {
+        if (delay > 0) {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+
         setGeneratingId(id);
-        setTimeout(() => {
-            // Mock random image color based on id
-            const colors = ['bg-red-200', 'bg-blue-200', 'bg-green-200', 'bg-yellow-200', 'bg-purple-200'];
-            const mockImg = `https://picsum.photos/seed/${id}/800/450`; // Use reliable placeholder service
-            updateSegment(id, { imageUrl: mockImg });
+        const segment = segments.find(s => s.id === id);
+
+        if (!segment) {
             setGeneratingId(null);
-        }, 2000 + delay);
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/ai/image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: segment.prompt,
+                    ratio: settings.ratio,
+                    style: settings.style,
+                    model: settings.imageModel || 'pollinations'
+                })
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Failed to generate image (${res.status})`);
+            }
+
+            const data = await res.json();
+            if (data.imageUrl) {
+                updateSegment(id, { imageUrl: data.imageUrl });
+            }
+        } catch (error: any) {
+            console.error("Image generation error:", error);
+            alert("이미지 생성 실패: " + error.message);
+        } finally {
+            setGeneratingId(null);
+        }
     };
 
     const handleGenerateAll = () => {
@@ -34,6 +66,70 @@ export default function Step4_Image() {
         setTimeout(() => setAutoGenerating(false), delay + 1000);
     };
 
+    // Auto-parse script text into segments when we enter this step
+    React.useEffect(() => {
+        console.log("Step 4 useEffect triggered. scriptRaw:", settings.scriptRaw ? "Exists" : "Empty", "segments length:", segments.length);
+
+        if (!settings.scriptRaw) return;
+
+        // If segments already exist AND they are not just the default placeholder, don't overwrite
+        // Let's assume a default placeholder has id '1' and text '최근...' as seen in the screenshot
+        const hasOnlyDefaultPlaceholder = segments.length === 1 && segments[0].text.includes('최근 환율이');
+
+        if (segments.length > 0 && !hasOnlyDefaultPlaceholder) {
+            console.log("Segments already populated with real data, skipping parse.");
+            return;
+        }
+
+        const rawText = settings.scriptRaw;
+        console.log("Raw text to parse:", rawText.substring(0, 100) + "...");
+
+        // Split by segment markers like **[Segment 1]**, [Segment 1], etc.
+        const segmentBlocks = rawText.split(/(?:(?:\*\*|)\[Segment \d+\](?:\*\*|))/i).filter(s => s.trim().length > 0);
+        console.log("Found segment blocks:", segmentBlocks.length);
+
+        const newSegments: Segment[] = [];
+
+        // If no segments found, at least add one generic block
+        if (segmentBlocks.length === 0) {
+            console.log("No segment blocks found by regex. Creating generic block.");
+            newSegments.push({
+                id: '1',
+                text: rawText.substring(0, 150) + '...',
+                prompt: 'Scene derived from text: ' + rawText.substring(0, 50),
+                duration: 5,
+                imageUrl: ''
+            });
+            setSegments(newSegments);
+            return;
+        }
+
+        segmentBlocks.forEach((block, idx) => {
+            const cutId = String(idx + 1);
+            // Try to extract "Visual: ..." or "Prompt: ..."
+            const visualMatch = block.match(/(?:Visual|Prompt|Visual Prompt):\s*(.+)/i);
+            const textMatch = block.match(/(?:Text|Narration|Voice|대사|내레이션):\s*(.+)/i);
+
+            let promptStr = visualMatch ? visualMatch[1].trim() : "Auto-generated prompt for scene " + cutId;
+            let narrationStr = textMatch ? textMatch[1].trim() : block.trim().substring(0, 100);
+
+            // Clean up Markdown asterisks if any
+            narrationStr = narrationStr.replace(/\*\*/g, '').replace(/"/g, '');
+
+            newSegments.push({
+                id: cutId,
+                text: narrationStr,
+                prompt: promptStr,
+                duration: 5,
+                imageUrl: ''
+            });
+        });
+
+        if (newSegments.length > 0) {
+            setSegments(newSegments);
+        }
+    }, [settings.scriptRaw, segments.length, setSegments]);
+
     return (
         <div className="max-w-6xl mx-auto p-6">
             <div className="flex items-center justify-between mb-6">
@@ -42,11 +138,14 @@ export default function Step4_Image() {
                     <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium">Auto-Segmented</span>
                 </h2>
                 <div className="flex gap-3">
-                    <select className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg p-2.5">
-                        <option>HyperReal Pro (Best for Korean Text)</option>
-                        <option>SeeDream (Fastest)</option>
-                        <option>Z-Image (Artistic)</option>
-                        <option>Qwen-VL (Reasoning)</option>
+                    <select
+                        value={settings.imageModel || 'pollinations'}
+                        onChange={(e) => updateSettings({ imageModel: e.target.value })}
+                        className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg p-2.5"
+                    >
+                        {imageModels.map(m => (
+                            <option key={m.id} value={m.id}>{m.label}</option>
+                        ))}
                     </select>
                     <button
                         onClick={handleGenerateAll}

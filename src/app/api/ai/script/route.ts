@@ -5,13 +5,7 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
 
 export async function POST(request: Request) {
     try {
-        const { topic, ratio, style } = await request.json();
-
-        if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY === 'your_gemini_api_key_here') {
-            return NextResponse.json({ error: "Gemini API Key is missing. Please set it in .env.local" }, { status: 401 });
-        }
-
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const { topic, ratio, style, model: scriptModel } = await request.json();
 
         // Style-specific instructions for better visual descriptions
         let styleInstruction = "";
@@ -42,9 +36,43 @@ export async function POST(request: Request) {
             ...
         `;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+        let text = "";
+
+        if (scriptModel === 'grok') {
+            const xaiApiKey = process.env.XAI_API_KEY;
+            if (!xaiApiKey) {
+                return NextResponse.json({ error: "xAI API Key is missing. Please set it in .env.local" }, { status: 401 });
+            }
+            const res = await fetch("https://api.x.ai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${xaiApiKey}`
+                },
+                body: JSON.stringify({
+                    messages: [
+                        { role: "system", content: "You are a professional video script writer and storyboard artist. You must answer in Korean." },
+                        { role: "user", content: prompt }
+                    ],
+                    model: "grok-2-latest",
+                    stream: false,
+                    temperature: 0.7
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error?.message || `Grok error ${res.status}`);
+            }
+            text = data.choices[0].message.content;
+        } else {
+            if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY === 'your_gemini_api_key_here') {
+                return NextResponse.json({ error: "Gemini API Key is missing. Please set it in .env.local" }, { status: 401 });
+            }
+            const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const result = await geminiModel.generateContent(prompt);
+            const response = await result.response;
+            text = response.text();
+        }
 
         return NextResponse.json({ script: text });
 

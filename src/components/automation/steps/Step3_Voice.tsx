@@ -21,8 +21,10 @@ export default function Step3_Voice() {
     const audioRef = React.useRef<HTMLAudioElement | null>(null);
     const [speed, setSpeed] = useState<'normal' | 'fast'>('normal');
 
+    const [isLoadingAudio, setIsLoadingAudio] = useState<string | null>(null);
+
     // Handle voice preview play
-    const handlePlayPreview = (voice: typeof voices[0]) => {
+    const handlePlayPreview = async (voice: typeof voices[0]) => {
         // If clicking the same voice, stop it
         if (playingVoiceId === voice.id) {
             if (audioRef.current) {
@@ -39,14 +41,13 @@ export default function Step3_Voice() {
             audioRef.current = null;
         }
 
-        // 1. Try to play preview URL if it exists
+        // Check if we have a hardcoded preview URL first
         if (voice.previewUrl) {
             const audio = new Audio(voice.previewUrl);
             audioRef.current = audio;
 
             audio.play().catch(err => {
                 console.warn("Audio preview failed:", err);
-                // Fallback to TTS if file missing/error
                 speakFallback(voice);
             });
 
@@ -56,9 +57,44 @@ export default function Step3_Voice() {
             };
 
             setPlayingVoiceId(voice.id);
-        } else {
-            // 2. Fallback to Browser TTS
+            return;
+        }
+
+        // Try hitting our API for TTS preview
+        setIsLoadingAudio(voice.id);
+        try {
+            const response = await fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: voice.sampleText || `안녕하세요, 저는 ${voice.name}입니다. ${voice.desc}`,
+                    voiceId: voice.id
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+
+            const audioBlob = await response.blob();
+            const url = URL.createObjectURL(audioBlob);
+
+            const audio = new Audio(url);
+            audioRef.current = audio;
+
+            audio.onended = () => {
+                setPlayingVoiceId(null);
+                audioRef.current = null;
+                URL.revokeObjectURL(url); // Clean up memory
+            };
+
+            await audio.play();
+            setPlayingVoiceId(voice.id);
+        } catch (error) {
+            console.error("API TTS Preview failed, falling back to browser TTS", error);
             speakFallback(voice);
+        } finally {
+            setIsLoadingAudio(null);
         }
     };
 
@@ -82,19 +118,20 @@ export default function Step3_Voice() {
         window.speechSynthesis.cancel();
 
         const utterance = new SpeechSynthesisUtterance(
-            `안녕하세요, 저는 ${voice.name}입니다. ${voice.desc}`
+            voice.sampleText || `안녕하세요, 저는 ${voice.name}입니다. ${voice.desc}`
         );
-        utterance.lang = 'ko-KR';
+        utterance.lang = voice.language === 'English' ? 'en-US' : 'ko-KR';
         utterance.rate = speed === 'fast' ? 1.2 : 1.0;
 
         // Robust voice selection
         const voicesList = window.speechSynthesis.getVoices();
-        // Try to find a Google Korean voice first (usually better quality), then any Korean voice
-        const koVoice = voicesList.find(v => v.name.includes('Google') && v.lang.includes('ko'))
-            || voicesList.find(v => v.lang.includes('ko') || v.lang.includes('KO'));
+        const langTarget = voice.language === 'English' ? 'en' : 'ko';
 
-        if (koVoice) {
-            utterance.voice = koVoice;
+        const bestVoice = voicesList.find(v => v.name.includes('Google') && v.lang.includes(langTarget))
+            || voicesList.find(v => v.lang.includes(langTarget) || v.lang.includes(langTarget.toUpperCase()));
+
+        if (bestVoice) {
+            utterance.voice = bestVoice;
         }
 
         utterance.onend = () => {
@@ -205,20 +242,26 @@ export default function Step3_Voice() {
                                         >
                                             <div className="flex items-start justify-between">
                                                 <div className="flex items-center gap-3">
-                                                    {/* Play Button */}
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             handlePlayPreview(voice);
                                                         }}
+                                                        disabled={isLoadingAudio === voice.id}
                                                         className={cn(
                                                             "w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all z-10",
-                                                            playingVoiceId === voice.id
+                                                            playingVoiceId === voice.id || isLoadingAudio === voice.id
                                                                 ? "bg-[#6d28d9] text-white"
                                                                 : "bg-[#27272a] text-gray-400 group-hover:bg-[#3f3f46] group-hover:text-white"
                                                         )}
                                                     >
-                                                        {playingVoiceId === voice.id ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+                                                        {isLoadingAudio === voice.id ? (
+                                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                        ) : playingVoiceId === voice.id ? (
+                                                            <Pause className="w-4 h-4 fill-current" />
+                                                        ) : (
+                                                            <Play className="w-4 h-4 fill-current ml-0.5" />
+                                                        )}
                                                     </button>
 
                                                     <div>

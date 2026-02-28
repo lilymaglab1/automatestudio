@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useWizard, Segment } from '@/components/automation/WizardContext';
 import { Play, Loader2, CheckCircle2, AlertTriangle, AlertOctagon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { videoModels } from '@/lib/automation-constants';
 
 export default function Step5_Video() {
     const { settings, updateSettings, segments, updateSegment, setStep } = useWizard();
@@ -47,14 +48,15 @@ export default function Step5_Video() {
                 <div className="flex items-center justify-center gap-4 mb-6">
                     <label className="text-sm font-bold text-slate-700">Video Model:</label>
                     <select
-                        value={settings.videoModel}
+                        value={settings.videoModel || videoModels[0].id}
                         onChange={(e) => updateSettings({ videoModel: e.target.value })}
                         className="bg-white border border-slate-300 rounded-lg px-4 py-2 text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500"
                     >
-                        <option value="motion-v1">MotionGen V1 (Best for Animation)</option>
-                        <option value="kling">Kling Pro (Realistic Motion)</option>
-                        <option value="luma">Luma Dream Machine</option>
-                        <option value="runway">Runway Gen-3 Alpha</option>
+                        {videoModels.map(m => (
+                            <option key={m.id} value={m.id}>
+                                {m.label} {m.isPro ? '(PRO)' : ''}
+                            </option>
+                        ))}
                     </select>
                 </div>
 

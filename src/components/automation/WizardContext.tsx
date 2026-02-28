@@ -28,6 +28,7 @@ interface WizardState {
         scriptRaw: string;
         selectedVoice: string;
         videoModel: string; // e.g. 'seedance'
+        scriptModel?: string;
         includeSubtitles: boolean;
         imageModel?: string;
         voiceSpeed: number;
@@ -38,6 +39,7 @@ interface WizardState {
             bgColor: string;
             bgOpacity: number;
             shadow: string;
+            outlineColor: string;
         };
     };
     segments: Segment[];
@@ -72,6 +74,7 @@ export function WizardProvider({ children, initialData, initialProjectId }: Wiza
         scriptRaw: '',
         selectedVoice: '',
         videoModel: '',
+        scriptModel: 'gemini',
         includeSubtitles: true,
         imageModel: 'z-image-turbo',
         voiceSpeed: 1,
@@ -81,7 +84,8 @@ export function WizardProvider({ children, initialData, initialProjectId }: Wiza
             color: '#FFFFFF',
             bgColor: '#000000',
             bgOpacity: 85,
-            shadow: 'soft'
+            shadow: 'outline',
+            outlineColor: '#000000'
         },
         ...initialData?.settings
     });

@@ -31,14 +31,15 @@ async function getProject(id: string) {
     }
 }
 
-export default async function ProjectPage({ params }: { params: { id: string } }) {
-    let project = await getProject(params.id);
+export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    let project = await getProject(id);
 
     // If still null (e.g. valid DB connection but ID not found), create a temporary fallback project
     // This allows the user to continue working even if the project wasn't saved to DB yet (e.g. memory-only mode)
     if (!project) {
         project = {
-            _id: params.id,
+            _id: id,
             title: 'New Project',
             step: 1,
             settings: {},

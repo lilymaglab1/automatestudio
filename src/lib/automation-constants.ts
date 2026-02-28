@@ -29,12 +29,16 @@ export const ratios = [
 ];
 
 export const videoModels = [
+    { id: 'veo-3', label: 'Google Veo 3', isPro: true },
+    { id: 'grok', label: 'xAI Grok', isPro: true },
     { id: 'kling', label: 'Kling 1.6 (HighQ)', isPro: true },
     { id: 'minimax', label: 'Minimax (Fast)', isPro: false },
     { id: 'hailuo', label: 'Hailuo (Balanced)', isPro: true }
 ];
 
 export const imageModels = [
+    { id: 'pollinations', label: 'Pollinations AI', isPro: false },
+    { id: 'google-imagen', label: 'Google Imagen 3', isPro: false },
     { id: 'midjourney', label: 'Midjourney v6', isPro: true },
     { id: 'dalle3', label: 'DALL-E 3', isPro: false },
     { id: 'stable-diffusion', label: 'Stable Diffusion XL', isPro: false },
@@ -42,31 +46,41 @@ export const imageModels = [
     { id: 'ideogram', label: 'Ideogram 2.0', isPro: false }
 ];
 
-// Voice Data based on user request and screenshots
-export const voices = [
-    // --- Featured/Character Voices (Top Row style) ---
-    { id: 'garan', name: '가란', gender: 'female', lang: 'Korean', desc: '전장을 누비며 목소리마저 굳어버린 노련한 퇴역 장군', category: 'Character', tags: ['#거친', '#묵직한', '#연륜있는'], previewUrl: '' },
-    { id: 'seoyeon', name: '서연', gender: 'female', lang: 'Korean', desc: '에너지 넘치는 목소리로 완판을 이끄는 전문 쇼호스트', category: 'Character', tags: ['#발랄한', '#빠른', '#설득력있는'], previewUrl: '' },
-    { id: 'sujin', name: '수진', gender: 'female', lang: 'Korean', desc: '아이들의 눈높이에서 꿈과 희망을 들려주는 순수한 동화 구연가', category: 'Character', tags: ['#순수한', '#다정한', '#동화같은'], previewUrl: '' },
-    { id: 'yujin', name: '유진', gender: 'female', lang: 'Korean', desc: '차분하고 논리적인 어조로 깊이 있는 통찰을 전하는 지식 유튜버', category: 'Character', tags: ['#지적인', '#차분한', '#신뢰감있는'], previewUrl: '' },
+export const voices: Array<{
+    id: string;
+    name: string;
+    gender: string;
+    lang: string;
+    desc: string;
+    category: string;
+    tags: string[];
+    previewUrl: string;
+    sampleText?: string;
+    language?: string;
+}> = [
+        // --- Featured/Character Voices (Top Row style) ---
+        { id: 'garan', name: '가란', gender: 'female', lang: 'Korean', desc: '전장을 누비며 목소리마저 굳어버린 노련한 퇴역 장군', category: 'Character', tags: ['#거친', '#묵직한', '#연륜있는'], previewUrl: '' },
+        { id: 'seoyeon', name: '서연', gender: 'female', lang: 'Korean', desc: '에너지 넘치는 목소리로 완판을 이끄는 전문 쇼호스트', category: 'Character', tags: ['#발랄한', '#빠른', '#설득력있는'], previewUrl: '' },
+        { id: 'sujin', name: '수진', gender: 'female', lang: 'Korean', desc: '아이들의 눈높이에서 꿈과 희망을 들려주는 순수한 동화 구연가', category: 'Character', tags: ['#순수한', '#다정한', '#동화같은'], previewUrl: '' },
+        { id: 'yujin', name: '유진', gender: 'female', lang: 'Korean', desc: '차분하고 논리적인 어조로 깊이 있는 통찰을 전하는 지식 유튜버', category: 'Character', tags: ['#지적인', '#차분한', '#신뢰감있는'], previewUrl: '' },
 
-    // --- Professional Voices (from text file & screenshot) ---
-    { id: 'mira', name: '미라', gender: 'female', lang: 'Korean', desc: '신비롭고 몽환적인 분위기를 자아내는 매혹적인 타로 점술가', category: 'Character', tags: ['#신비로운', '#매혹적인', '#중저음'], previewUrl: '' },
-    { id: 'nayoung', name: '나영', gender: 'female', lang: 'Korean', desc: '범죄자들을 압도하는 카리스마를 가진 베테랑 형사', category: 'Character', tags: ['#단호한', '#카리스마', '#강인한'], previewUrl: '' },
-    { id: 'jisoo_dept', name: '지수', gender: 'female', lang: 'Korean', desc: '상냥하고 친절한 미소로 손님을 맞이하는 백화점 안내원', category: 'Character', tags: ['#친절한', '#상냥한', '#하이톤'], previewUrl: '' },
-    { id: 'haesu', name: '해수', gender: 'female', lang: 'Korean', desc: '냉철하고 예리한 시선으로 사건의 핵심을 짚는 시사 앵커', category: 'Character', tags: ['#냉철한', '#전문적인', '#깔끔한'], previewUrl: '' },
+        // --- Professional Voices (from text file & screenshot) ---
+        { id: 'mira', name: '미라', gender: 'female', lang: 'Korean', desc: '신비롭고 몽환적인 분위기를 자아내는 매혹적인 타로 점술가', category: 'Character', tags: ['#신비로운', '#매혹적인', '#중저음'], previewUrl: '' },
+        { id: 'nayoung', name: '나영', gender: 'female', lang: 'Korean', desc: '범죄자들을 압도하는 카리스마를 가진 베테랑 형사', category: 'Character', tags: ['#단호한', '#카리스마', '#강인한'], previewUrl: '' },
+        { id: 'jisoo_dept', name: '지수', gender: 'female', lang: 'Korean', desc: '상냥하고 친절한 미소로 손님을 맞이하는 백화점 안내원', category: 'Character', tags: ['#친절한', '#상냥한', '#하이톤'], previewUrl: '' },
+        { id: 'haesu', name: '해수', gender: 'female', lang: 'Korean', desc: '냉철하고 예리한 시선으로 사건의 핵심을 짚는 시사 앵커', category: 'Character', tags: ['#냉철한', '#전문적인', '#깔끔한'], previewUrl: '' },
 
-    // --- Real/Cloned Voices (High Quality) ---
-    { id: '0oqpliV6dVSr9XomngOW', name: '지니 (Jini)', gender: 'female', lang: 'Korean', desc: '지적인 전문가, 차분하고 신뢰감 있는 목소리', category: 'Professional', tags: ['#전문적인', '#차분한'], previewUrl: '' },
-    { id: 'F7wT70V3u09d2rY9pNa6', name: '유라 (Yura)', gender: 'female', lang: 'Korean', desc: '밝고 깨끗한 톤, 스토리텔링과 광고에 적합', category: 'Professional', tags: ['#밝은', '#깨끗한'], previewUrl: '' },
-    { id: 'iWLjl1zCuqXRkW6494ve', name: '지수 (Jisoo)', gender: 'female', lang: 'Korean', desc: '초대하는 듯한, 뉴스 스타일의 명료한 목소리', category: 'Professional', tags: ['#뉴스', '#명료한'], previewUrl: '' },
-    { id: 'zgDzx5jLLCqEp6Fl7Kl7', name: '한나 (Hanna)', gender: 'female', lang: 'Korean', desc: '자연스럽고 편안한, 브이로그와 내레이션', category: 'Professional', tags: ['#자연스러운', '#편안한'], previewUrl: '' },
-    { id: 'AW5wrnG1jVizOYY7R1Oo', name: '지영 (Jiyoung)', gender: 'female', lang: 'Korean', desc: '따뜻하고 명료한, 친근하고 자연스러운 톤', category: 'Professional', tags: ['#따뜻한', '#친근한'], previewUrl: '' },
-    { id: 'xi3rF0t7dg7uN2M0WUhr', name: '유나 (Yuna)', gender: 'female', lang: 'Korean', desc: '부드럽고 명랑한, 내레이션과 스토리텔링 전문', category: 'Professional', tags: ['#명랑한', '#스토리텔링'], previewUrl: '' },
+        // --- Real/Cloned Voices (High Quality) ---
+        { id: '0oqpliV6dVSr9XomngOW', name: '지니 (Jini)', gender: 'female', lang: 'Korean', desc: '지적인 전문가, 차분하고 신뢰감 있는 목소리', category: 'Professional', tags: ['#전문적인', '#차분한'], previewUrl: '' },
+        { id: 'F7wT70V3u09d2rY9pNa6', name: '유라 (Yura)', gender: 'female', lang: 'Korean', desc: '밝고 깨끗한 톤, 스토리텔링과 광고에 적합', category: 'Professional', tags: ['#밝은', '#깨끗한'], previewUrl: '' },
+        { id: 'iWLjl1zCuqXRkW6494ve', name: '지수 (Jisoo)', gender: 'female', lang: 'Korean', desc: '초대하는 듯한, 뉴스 스타일의 명료한 목소리', category: 'Professional', tags: ['#뉴스', '#명료한'], previewUrl: '' },
+        { id: 'zgDzx5jLLCqEp6Fl7Kl7', name: '한나 (Hanna)', gender: 'female', lang: 'Korean', desc: '자연스럽고 편안한, 브이로그와 내레이션', category: 'Professional', tags: ['#자연스러운', '#편안한'], previewUrl: '' },
+        { id: 'AW5wrnG1jVizOYY7R1Oo', name: '지영 (Jiyoung)', gender: 'female', lang: 'Korean', desc: '따뜻하고 명료한, 친근하고 자연스러운 톤', category: 'Professional', tags: ['#따뜻한', '#친근한'], previewUrl: '' },
+        { id: 'xi3rF0t7dg7uN2M0WUhr', name: '유나 (Yuna)', gender: 'female', lang: 'Korean', desc: '부드럽고 명랑한, 내레이션과 스토리텔링 전문', category: 'Professional', tags: ['#명랑한', '#스토리텔링'], previewUrl: '' },
 
-    // --- Male Voices ---
-    { id: 'LS3HmRGCXV8wxCAhUbTt', name: '동 (Dong)', gender: 'male', lang: 'Korean', desc: '따뜻하고 친근한 40대 남성, 다큐멘터리', category: 'Professional', tags: ['#따뜻한', '#중년'], previewUrl: '' },
-    { id: 'aQzFKIjVemqRAhfd9est', name: '미드나잇 (Midnight)', gender: 'male', lang: 'Korean', desc: '깊고 울림이 있는 중저음, 럭셔리 브랜드', category: 'Professional', tags: ['#중저음', '#럭셔리'], previewUrl: '' },
-    { id: 'm3gJBS8OofDJfycyA2Ip', name: '태형 (Taehyung)', gender: 'male', lang: 'Korean', desc: '자연스럽고 친근한 청년, 소셜 미디어', category: 'Professional', tags: ['#청년', '#자연스러운'], previewUrl: '' },
-    { id: 'z2P4oCxSHhXan3ew4COv', name: '카레이 (Karaey)', gender: 'male', lang: 'Korean', desc: '차분하고 인내심 깊은 40대 남성', category: 'Professional', tags: ['#차분한', '#신뢰감'], previewUrl: '' }
-];
+        // --- Male Voices ---
+        { id: 'LS3HmRGCXV8wxCAhUbTt', name: '동 (Dong)', gender: 'male', lang: 'Korean', desc: '따뜻하고 친근한 40대 남성, 다큐멘터리', category: 'Professional', tags: ['#따뜻한', '#중년'], previewUrl: '' },
+        { id: 'aQzFKIjVemqRAhfd9est', name: '미드나잇 (Midnight)', gender: 'male', lang: 'Korean', desc: '깊고 울림이 있는 중저음, 럭셔리 브랜드', category: 'Professional', tags: ['#중저음', '#럭셔리'], previewUrl: '' },
+        { id: 'm3gJBS8OofDJfycyA2Ip', name: '태형 (Taehyung)', gender: 'male', lang: 'Korean', desc: '자연스럽고 친근한 청년, 소셜 미디어', category: 'Professional', tags: ['#청년', '#자연스러운'], previewUrl: '' },
+        { id: 'z2P4oCxSHhXan3ew4COv', name: '카레이 (Karaey)', gender: 'male', lang: 'Korean', desc: '차분하고 인내심 깊은 40대 남성', category: 'Professional', tags: ['#차분한', '#신뢰감'], previewUrl: '' }
+    ];

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     Settings,
     ChevronLeft,
@@ -21,11 +21,13 @@ import {
 import { cn } from '@/lib/utils';
 import { useWizard, AspectRatio } from '@/components/automation/WizardContext';
 import { styles, videoModels, imageModels } from '@/lib/automation-constants';
+import { VOICES } from '@/lib/voice_data';
 
 export default function WizardSidebar() {
     const { settings, updateSettings, setStep } = useWizard();
     const [collapsed, setCollapsed] = useState(false);
     const [activeTab, setActiveTab] = useState('narr');
+    const [showAllStyles, setShowAllStyles] = useState(false);
 
     const activeStyle = styles.find(s => s.id === settings.style) || styles[0];
 
@@ -34,6 +36,56 @@ export default function WizardSidebar() {
         if (val === 1) return '보통';
         if (val > 1) return '빠르게';
         return '느리게';
+    };
+
+    const [isPreviewing, setIsPreviewing] = useState(false);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    const playPreviewVoice = async () => {
+        if (!settings.selectedVoice || isPreviewing) return;
+
+        const voice = VOICES.find(v => v.id === settings.selectedVoice);
+        if (!voice) return;
+
+        try {
+            setIsPreviewing(true);
+
+            // Stop existing audio if any
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+            }
+
+            const res = await fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: voice.sampleText || '안녕하세요, 반갑습니다.',
+                    voiceId: voice.id
+                })
+            });
+
+            if (!res.ok) throw new Error('TTS Failed');
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+
+            audioRef.current = audio;
+            audio.onended = () => setIsPreviewing(false);
+            audio.onerror = () => setIsPreviewing(false);
+
+            await audio.play();
+        } catch (error) {
+            console.error('Play preview error:', error);
+            setIsPreviewing(false);
+
+            // Fallback to browser TTS
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(voice.sampleText || '안녕하세요');
+            utterance.lang = voice.googleVoiceId.startsWith('en') ? 'en-US' : 'ko-KR';
+            window.speechSynthesis.speak(utterance);
+        }
     };
 
     const tabs = [
@@ -136,17 +188,36 @@ export default function WizardSidebar() {
                                 {/* Default Voice Selector */}
                                 <div className="mb-6">
                                     <span className="text-sm font-bold text-gray-300 mb-2 block">기본 음성 (마이 보이스)</span>
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex-1 bg-[#1a1a1f] border border-[#27272a] rounded-2xl px-4 py-4 flex items-center justify-between cursor-pointer hover:border-[#6d28d9] transition-all group">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full bg-gray-500" />
-                                                <span className="text-sm font-medium text-gray-400 group-hover:text-gray-200 transition-colors">
-                                                    {settings.selectedVoice || "선택된 음성 없음"}
-                                                </span>
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative flex-1">
+                                            <select
+                                                value={settings.selectedVoice || ''}
+                                                onChange={(e) => updateSettings({ selectedVoice: e.target.value })}
+                                                className="w-full bg-[#1a1a1f] border border-[#27272a] rounded-2xl px-4 py-4 pr-10 text-sm font-medium text-white appearance-none cursor-pointer hover:border-[#6d28d9] focus:outline-none focus:border-[#6d28d9] transition-all"
+                                            >
+                                                <option value="" disabled className="bg-[#1a1a1f] text-gray-500">
+                                                    음성 선택
+                                                </option>
+                                                {VOICES.map(v => (
+                                                    <option key={v.id} value={v.id} className="bg-[#1a1a1f] text-white">
+                                                        {v.name} ({v.tags.join(', ')})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+                                                <ChevronDown className="w-4 h-4 text-gray-600" />
                                             </div>
-                                            <ChevronDown className="w-4 h-4 text-gray-600" />
                                         </div>
-                                        <button className="p-4 bg-[#1a1a1f] rounded-2xl border border-[#27272a] hover:border-[#6d28d9] text-gray-400 hover:text-[#6d28d9] transition-all">
+                                        <button
+                                            onClick={playPreviewVoice}
+                                            disabled={!settings.selectedVoice || isPreviewing}
+                                            className={cn(
+                                                "p-4 rounded-2xl border transition-all",
+                                                !settings.selectedVoice ? "bg-[#1a1a1f] border-[#27272a] text-gray-600 cursor-not-allowed" :
+                                                    isPreviewing ? "bg-[#6d28d9] border-[#6d28d9] text-white animate-pulse" :
+                                                        "bg-[#1a1a1f] border-[#27272a] hover:border-[#6d28d9] text-gray-400 hover:text-[#6d28d9]"
+                                            )}
+                                        >
                                             <Play className="w-4 h-4 fill-current" />
                                         </button>
                                     </div>
@@ -208,6 +279,24 @@ export default function WizardSidebar() {
                             {/* AI Engine Section */}
                             <div>
                                 <label className="text-xs font-bold text-gray-500 uppercase mb-4 block">AI 생성 엔진</label>
+
+                                {/* Script Model */}
+                                <div className="mb-4">
+                                    <span className="text-sm font-bold text-gray-500 mb-2 block text-[10px]">대본 생성 모델</span>
+                                    <div className="relative">
+                                        <select
+                                            value={settings.scriptModel || 'gemini'}
+                                            onChange={(e) => updateSettings({ scriptModel: e.target.value })}
+                                            className="w-full bg-[#1a1a1f] border border-[#27272a] rounded-2xl px-4 py-4 pr-10 text-sm font-medium text-white appearance-none cursor-pointer hover:border-[#6d28d9] focus:outline-none focus:border-[#6d28d9] transition-all"
+                                        >
+                                            <option value="gemini" className="bg-[#1a1a1f] text-white py-2">Google Gemini 2.5</option>
+                                            <option value="grok" className="bg-[#1a1a1f] text-white py-2">xAI Grok-2</option>
+                                        </select>
+                                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+                                            <ChevronDown className="w-4 h-4 text-gray-600" />
+                                        </div>
+                                    </div>
+                                </div>
 
                                 {/* Image Model */}
                                 <div className="mb-4">
@@ -291,7 +380,12 @@ export default function WizardSidebar() {
                             <div className="mb-8 p-4 bg-[#1a1a1f] rounded-3xl border border-[#27272a]">
                                 <div className="flex items-center justify-between mb-4 px-1">
                                     <span className="text-xs font-bold text-gray-400">추천 스타일</span>
-                                    <button className="text-[10px] text-[#6d28d9] font-bold hover:underline">모두보기</button>
+                                    <button
+                                        onClick={() => setShowAllStyles(true)}
+                                        className="text-[10px] text-[#6d28d9] font-bold hover:underline"
+                                    >
+                                        모두보기
+                                    </button>
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                     {styles.slice(0, 6).map((s) => (
@@ -334,57 +428,141 @@ export default function WizardSidebar() {
                                     </button>
                                 </div>
 
-                                {/* Detailed Subtitle Settings (Visible only if toggle is on? Or always?) - Screenshot shows it visible */}
-                                <div className="space-y-4 px-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <TypeIcon className="w-4 h-4 text-gray-500" />
-                                        <span className="text-xs font-bold text-gray-400">자막 스타일</span>
-                                    </div>
+                                {/* Detailed Subtitle Settings */}
+                                {settings.includeSubtitles && (
+                                    <div className="space-y-4 px-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <TypeIcon className="w-4 h-4 text-gray-500" />
+                                            <span className="text-xs font-bold text-gray-400">자막 스타일</span>
+                                        </div>
 
-                                    {/* Font */}
-                                    <div className="bg-[#1a1a1f] border border-[#27272a] rounded-xl p-3">
-                                        <span className="text-[10px] font-bold text-gray-500 block mb-2">폰트</span>
-                                        <div className="flex justify-between items-center cursor-pointer">
-                                            <span className="text-sm font-medium text-white">Pretendard</span>
-                                            <ChevronDown className="w-4 h-4 text-gray-600" />
+                                        {/* Font */}
+                                        <div className="bg-[#1a1a1f] border border-[#27272a] rounded-xl p-3">
+                                            <span className="text-[10px] font-bold text-gray-500 block mb-2">폰트</span>
+                                            <div className="relative">
+                                                <select
+                                                    value={settings.subtitleSettings?.font || 'Pretendard'}
+                                                    onChange={(e) => updateSettings({
+                                                        subtitleSettings: { ...settings.subtitleSettings!, font: e.target.value }
+                                                    })}
+                                                    className="w-full bg-transparent text-sm font-medium text-white appearance-none cursor-pointer focus:outline-none"
+                                                >
+                                                    <option value="Pretendard" className="bg-[#1a1a1f]">Pretendard</option>
+                                                    <option value="NanumGothic" className="bg-[#1a1a1f]">나눔고딕</option>
+                                                    <option value="GmarketSansBold" className="bg-[#1a1a1f]">G마켓 산스</option>
+                                                    <option value="NotoSansKR" className="bg-[#1a1a1f]">Noto Sans KR</option>
+                                                </select>
+                                                <div className="absolute inset-y-0 right-0 flex items-center pointer-events-none">
+                                                    <ChevronDown className="w-4 h-4 text-gray-600" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Size */}
+                                        <div className="bg-[#1a1a1f] border border-[#27272a] rounded-xl p-3">
+                                            <span className="text-[10px] font-bold text-gray-500 block mb-2">크기</span>
+                                            <div className="relative">
+                                                <select
+                                                    value={settings.subtitleSettings?.size || 'medium'}
+                                                    onChange={(e) => updateSettings({
+                                                        subtitleSettings: { ...settings.subtitleSettings!, size: e.target.value }
+                                                    })}
+                                                    className="w-full bg-transparent text-sm font-medium text-white appearance-none cursor-pointer focus:outline-none"
+                                                >
+                                                    <option value="small" className="bg-[#1a1a1f]">작게</option>
+                                                    <option value="medium" className="bg-[#1a1a1f]">보통</option>
+                                                    <option value="large" className="bg-[#1a1a1f]">크게</option>
+                                                    <option value="xlarge" className="bg-[#1a1a1f]">매우 크게</option>
+                                                </select>
+                                                <div className="absolute inset-y-0 right-0 flex items-center pointer-events-none">
+                                                    <ChevronDown className="w-4 h-4 text-gray-600" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Shadow & Outline Settings */}
+                                        <div className="flex gap-3">
+                                            {/* Shadow */}
+                                            <div className="flex-1 bg-[#1a1a1f] border border-[#27272a] rounded-xl p-3">
+                                                <span className="text-[10px] font-bold text-gray-500 block mb-2">테두리/그림자</span>
+                                                <div className="relative">
+                                                    <select
+                                                        value={settings.subtitleSettings?.shadow || 'outline'}
+                                                        onChange={(e) => updateSettings({
+                                                            subtitleSettings: { ...settings.subtitleSettings!, shadow: e.target.value }
+                                                        })}
+                                                        className="w-full bg-transparent text-sm font-medium text-white appearance-none cursor-pointer focus:outline-none"
+                                                    >
+                                                        <option value="none" className="bg-[#1a1a1f]">없음</option>
+                                                        <option value="soft" className="bg-[#1a1a1f]">기본 그림자</option>
+                                                        <option value="hard" className="bg-[#1a1a1f]">진한 그림자</option>
+                                                        <option value="outline" className="bg-[#1a1a1f]">텍스트 겉선 (외곽선)</option>
+                                                    </select>
+                                                    <div className="absolute inset-y-0 right-0 flex items-center pointer-events-none">
+                                                        <ChevronDown className="w-4 h-4 text-gray-600" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Outline Color */}
+                                            {settings.subtitleSettings?.shadow === 'outline' && (
+                                                <div className="flex-1 bg-[#1a1a1f] border border-[#27272a] rounded-xl p-3 animate-in zoom-in-95 duration-200">
+                                                    <span className="text-[10px] font-bold text-gray-500 block mb-2">외곽선 색상</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="color"
+                                                            value={settings.subtitleSettings?.outlineColor || '#000000'}
+                                                            onChange={(e) => updateSettings({
+                                                                subtitleSettings: { ...settings.subtitleSettings!, outlineColor: e.target.value }
+                                                            })}
+                                                            className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0 p-0"
+                                                        />
+                                                        <span className="text-xs font-mono text-gray-400">
+                                                            {(settings.subtitleSettings?.outlineColor || '#000000').toUpperCase()}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Colors */}
+                                        <div className="flex gap-3">
+                                            <div className="flex-1 bg-[#1a1a1f] border border-[#27272a] rounded-xl p-3">
+                                                <span className="text-[10px] font-bold text-gray-500 block mb-2">글자 색상</span>
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="color"
+                                                        value={settings.subtitleSettings?.color || '#FFFFFF'}
+                                                        onChange={(e) => updateSettings({
+                                                            subtitleSettings: { ...settings.subtitleSettings!, color: e.target.value }
+                                                        })}
+                                                        className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0 p-0"
+                                                    />
+                                                    <span className="text-xs font-mono text-gray-400">
+                                                        {(settings.subtitleSettings?.color || '#FFFFFF').toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex-1 bg-[#1a1a1f] border border-[#27272a] rounded-xl p-3">
+                                                <span className="text-[10px] font-bold text-gray-500 block mb-2">배경 색상</span>
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="color"
+                                                        value={settings.subtitleSettings?.bgColor || '#000000'}
+                                                        onChange={(e) => updateSettings({
+                                                            subtitleSettings: { ...settings.subtitleSettings!, bgColor: e.target.value }
+                                                        })}
+                                                        className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0 p-0"
+                                                    />
+                                                    <span className="text-xs font-mono text-gray-400">
+                                                        {(settings.subtitleSettings?.bgColor || '#000000').toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-
-                                    {/* Size */}
-                                    <div className="bg-[#1a1a1f] border border-[#27272a] rounded-xl p-3">
-                                        <span className="text-[10px] font-bold text-gray-500 block mb-2">크기</span>
-                                        <div className="flex justify-between items-center cursor-pointer">
-                                            <span className="text-sm font-medium text-white">크게</span>
-                                            <ChevronDown className="w-4 h-4 text-gray-600" />
-                                        </div>
-                                    </div>
-
-                                    {/* Shadow */}
-                                    <div className="bg-[#1a1a1f] border border-[#27272a] rounded-xl p-3">
-                                        <span className="text-[10px] font-bold text-gray-500 block mb-2">그림자</span>
-                                        <div className="flex justify-between items-center cursor-pointer">
-                                            <span className="text-sm font-medium text-white">부드럽게</span>
-                                            <ChevronDown className="w-4 h-4 text-gray-600" />
-                                        </div>
-                                    </div>
-
-                                    {/* Colors */}
-                                    <div className="bg-[#1a1a1f] border border-[#27272a] rounded-xl p-3">
-                                        <span className="text-[10px] font-bold text-gray-500 block mb-2">글자 색상</span>
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-white border border-gray-600"></div>
-                                            <span className="text-xs font-mono text-gray-400">#FFFFFF</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-[#1a1a1f] border border-[#27272a] rounded-xl p-3">
-                                        <span className="text-[10px] font-bold text-gray-500 block mb-2">배경 색상</span>
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-black border border-gray-600"></div>
-                                            <span className="text-xs font-mono text-gray-400">#000000 (85%)</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -410,6 +588,69 @@ export default function WizardSidebar() {
                 >
                     <ChevronRight className="w-3 h-3" />
                 </button>
+            )}
+
+            {/* All Styles Modal */}
+            {showAllStyles && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6 animate-in fade-in duration-200">
+                    <div className="bg-[#121217] border border-[#1f1f23] rounded-3xl w-full max-w-5xl max-h-[85vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-8 border-b border-[#1f1f23]">
+                            <div>
+                                <h2 className="text-3xl font-black text-white mb-2">모든 스타일 보기</h2>
+                                <p className="text-gray-400 font-medium">원하는 시각적 분위기를 선택해 주세요.</p>
+                            </div>
+                            <button
+                                onClick={() => setShowAllStyles(false)}
+                                className="bg-[#1a1a1f] hover:bg-[#27272a] text-gray-400 hover:text-white p-3 rounded-2xl transition-all"
+                            >
+                                닫기
+                            </button>
+                        </div>
+
+                        {/* Modal Body - Grid of all styles */}
+                        <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                {styles.map((styleOpt) => (
+                                    <button
+                                        key={styleOpt.id}
+                                        onClick={() => {
+                                            updateSettings({ style: styleOpt.id as any });
+                                            setShowAllStyles(false);
+                                        }}
+                                        className={cn(
+                                            "relative group rounded-3xl overflow-hidden aspect-video border-4 transition-all duration-300",
+                                            settings.style === styleOpt.id
+                                                ? "border-[#6d28d9] shadow-[0_0_30px_rgba(109,40,217,0.4)] scale-105"
+                                                : "border-transparent opacity-80 hover:opacity-100 hover:scale-105"
+                                        )}
+                                    >
+                                        <img
+                                            src={styleOpt.preview}
+                                            alt={styleOpt.label}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-5">
+                                            <span className="text-white font-black text-lg shadow-black drop-shadow-md text-left leading-tight mb-1">
+                                                {styleOpt.label}
+                                            </span>
+                                            <span className="text-gray-300 text-xs font-bold text-left line-clamp-1">
+                                                {styleOpt.desc}
+                                            </span>
+
+                                            {/* Active Checkmark */}
+                                            {settings.style === styleOpt.id && (
+                                                <div className="absolute top-4 right-4 bg-[#6d28d9] text-white p-1 rounded-full shadow-lg">
+                                                    <CheckCircle2 className="w-5 h-5" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

@@ -34,7 +34,8 @@ export default function Step2_Script() {
                 body: JSON.stringify({
                     topic: topicInput,
                     ratio: settings.ratio,
-                    style: settings.style
+                    style: settings.style,
+                    model: settings.scriptModel || 'gemini'
                 })
             });
 
@@ -65,11 +66,6 @@ export default function Step2_Script() {
             updateSettings({ scriptRaw: topicInput, topic: topicInput });
         }
 
-        // Mock segment parsing (we'll improve this later)
-        const mockSegments = [
-            { id: '1', text: "최근 환율이 급격히 오르며 1500원선을 위협하고 있습니다.", duration: 5, prompt: "Economic terminal with red numbers", imageUrl: "https://images.unsplash.com/photo-1611974717411-e60d0061e88a?w=400" },
-        ];
-        setSegments(mockSegments);
         setStep(3);
     };
 
